@@ -1,20 +1,14 @@
 USE [DFNB3]
 GO
-
-/****** Object:  StoredProcedure [dbo].[usp_LoadDateDim]    Script Date: 11/17/2019 6:06:29 PM ******/
-DROP PROCEDURE [dbo].[usp_LoadDateDim]
-GO
-
-/****** Object:  StoredProcedure [dbo].[usp_LoadDateDim]    Script Date: 11/17/2019 6:06:29 PM ******/
+/****** Object:  StoredProcedure [dbo].[usp_LoadDateDim]    Script Date: 3/29/2021 5:48:59 AM ******/
 SET ANSI_NULLS ON
 GO
-
 SET QUOTED_IDENTIFIER ON
 GO
 
 
 --CREATE PROCEDURE [dbo].[usp_LoadDateDim] (@v_num_years as INT)
-CREATE PROCEDURE [dbo].[usp_LoadDateDim] (@v_num_days as INT)
+ALTER PROCEDURE [dbo].[usp_LoadDateDim] (@v_num_days as INT)
 AS
 BEGIN
 /*****************************************************************************************************************
@@ -30,6 +24,7 @@ Ver       Date         Author       Description
 -------   ----------   ----------   -----------------------------------------------------------------------------
 1.0       11/17/2019   JJAUSSI      1. Built this starter script for LDS BC IT 243
 1.0       03/21/2021   Mireya       1. Swap with @v_num_days for better precision
+1.0       03/29/2021   Mireya       1. Completed the base data and the date record.
 
 RUNTIME: 
 1 sec
@@ -120,35 +115,52 @@ SELECT CONVERT(VARCHAR, (@v_first_date + n.n), 112) AS date_id
      , CONVERT(VARCHAR, DATEADD(dd, -(DATEPART(dw, (@v_first_date + n.n)) - 1), (@v_first_date + n.n)), 112) AS week_start_date_id
      , FORMAT(DATEADD(dd, 7 - DATEPART(dw, (@v_first_date + n.n)), (@v_first_date + n.n)), 'yyyy-MM-dd') AS week_end_date
      , CONVERT(VARCHAR, DATEADD(dd, 7 - DATEPART(dw, (@v_first_date + n.n)), (@v_first_date + n.n)), 112) AS week_end_date_id
-     , NULL AS weekday_flag
-     , NULL AS weekend_flag
-     , NULL AS last_day_in_week_flag
-     , NULL AS month_number
-     , NULL AS month_name
-     , NULL AS month_abbreviation
-     , NULL AS month_last_day_number
-     , NULL AS month_start_date
-     , NULL AS month_start_date_id
-     , NULL AS month_end_date
-     , NULL AS month_end_date_id
-     , NULL AS month_end_date_previous
-     , NULL AS month_end_date_previous_id
-     , NULL AS last_day_in_month_flag
-     , NULL AS quarter_number
-     , NULL AS quarter_name
-     , NULL AS quarter_code
-     , NULL AS quarter_start_date
-     , NULL AS quarter_start_date_id
-     , NULL AS quarter_end_date
-     , NULL AS quarter_end_date_id
-     , NULL AS last_day_in_quarter_flag
-     , NULL AS year_number
-     , NULL AS year_start_date
-     , NULL AS year_start_date_id
-     , NULL AS year_end_date
-     , NULL AS year_end_date_id
-     , NULL AS yyyymm
-     , NULL AS last_day_in_year_flag
+     , CASE WHEN DATEPART( dw, (@v_first_date + n.n )) 
+	   IN (7,1) THEN 0
+	   ELSE 1 END AS weekday_flag
+     , CASE WHEN DATEPART( dw, (@v_first_date + n.n )) 
+	   IN (7,1) THEN 1
+	   ELSE 0 END AS weekend_flag
+     , CASE WHEN DATEPART( dw, (@v_first_date + n.n )) 
+	   IN (7) THEN 1
+	   ELSE 0 END AS last_day_in_week_flag
+     , DATEPART(mm, (@v_first_date + n.n )) AS month_number
+     , DATENAME(mm, (@v_first_date + n.n)) AS month_name
+     , FORMAT((@v_first_date + n.n), 'MMM') AS month_abbreviation
+     , DAY(EOMONTH((@v_first_date + n.n))) AS month_last_day_number
+     , FORMAT(DATEADD(mm, DATEDIFF(mm, 0, (@v_first_date + n.n)), 0),'yyyy-MM-dd') AS month_start_date
+     , CONVERT(VARCHAR, DATEADD(mm, DATEDIFF(mm, 0, (@v_first_date + n.n)), 0), 112) AS month_start_date_id
+     , FORMAT(DATEADD(dd, -1, DATEADD(mm, DATEDIFF(mm, 0, (@v_first_date + n.n)) + 1, 0)),'yyyy-MM-dd') AS month_end_date
+     , CONVERT(VARCHAR, DATEADD(dd, -1, DATEADD(mm, DATEDIFF(mm, 0, (@v_first_date + n.n)) + 1, 0)), 112) AS month_end_date_id
+     , FORMAT(DATEADD(DAY, -(DAY((@v_first_date + n.n ))), (@v_first_date + n.n )),'yyyy-MM-dd') AS month_end_date_previous
+     , CONVERT(VARCHAR, DATEADD(DAY, -(DAY((@v_first_date + n.n ))), (@v_first_date + n.n )), 112) AS month_end_date_previous_id
+     , CASE WHEN DATEPART(dd, (@v_first_date + n.n )) = DAY(EOMONTH(@v_first_date + n.n ))  THEN 1
+		ELSE 0 END AS last_day_in_month_flag 
+     , DATEPART( qq, (@v_first_date + n.n )) AS quarter_number
+     , CASE WHEN DATEPART(qq, (@v_first_date + n.n)) = 1 THEN 'Q1'
+     		WHEN DATEPART(qq, (@v_first_date + n.n)) = 2 THEN 'Q2'
+     		WHEN DATEPART(qq, (@v_first_date + n.n)) = 3 THEN 'Q3'
+     		WHEN DATEPART(qq, (@v_first_date + n.n)) = 4 THEN 'Q4' END AS quarter_name
+     , CASE WHEN DATEPART(qq, (@v_first_date + n.n)) = 1 THEN '1'
+     		WHEN DATEPART(qq, (@v_first_date + n.n)) = 2 THEN '2'
+     		WHEN DATEPART(qq, (@v_first_date + n.n)) = 3 THEN '3'
+     		WHEN DATEPART(qq, (@v_first_date + n.n)) = 4 THEN '4' END AS quarter_code
+     , FORMAT(DATEADD(qq, DATEDIFF(qq, 0, (@v_first_date + n.n)), 0),'yyyy-MM-dd') AS quarter_start_date
+     , CONVERT(VARCHAR, DATEADD(qq, DATEDIFF(qq, 0, (@v_first_date + n.n)), 0), 112) AS quarter_start_date_id
+     , FORMAT(DATEADD(dd, -1, DATEADD(qq, DATEDIFF(qq, 0, (@v_first_date + n.n)) +1, 0)),'yyyy-MM-dd') AS quarter_end_date
+     , CONVERT(VARCHAR, DATEADD(dd, -1, DATEADD(qq, DATEDIFF(qq, 0, (@v_first_date + n.n)) +1, 0)), 112) AS quarter_end_date_id
+     , CASE WHEN  DATEPART(dd,(@v_first_date + n.n)) = DATEADD (dd, -1, DATEADD(qq, DATEDIFF(qq, 0, (@v_first_date + n.n)) +1, 0)) 
+		THEN 1 
+		ELSE 0 END AS last_day_in_quarter_flag
+     , DATEPART(yy, (@v_first_date + n.n)) AS year_number
+     , FORMAT(DATEADD(qq, DATEDIFF(qq, 0, (@v_first_date + n.n)), 0),'yyyy-MM-dd') AS quarter_start_date
+     , CONVERT(VARCHAR, DATEADD(yy, DATEDIFF(yy, 0, (@v_first_date + n.n)), 0), 112) AS year_start_date_id
+     , FORMAT(DATEADD(dd, -1, DATEADD(qq, DATEDIFF(qq, 0, (@v_first_date + n.n)) +1, 0)),'yyyy-MM-dd') AS year_end_date
+     , CONVERT(VARCHAR, DATEADD(dd, -1, DATEADD(qq, DATEDIFF(qq, 0, (@v_first_date + n.n)) +1, 0)), 112) AS year_end_date_id
+     , CONVERT(VARCHAR(6),DATEADD(yy, DATEDIFF(yy, 0, (@v_first_date + n.n)), + 1), 112) AS yyyymm
+     , CASE WHEN DATEPART( dy, (@v_first_date + n.n )) 
+	   IN (365) THEN 1
+	   ELSE 0 END AS last_day_in_year_flag
      , NULL AS holiday_ind -- Challenge field
      , NULL AS holiday_name -- Challenge field
   FROM dbo.Nums AS n
@@ -174,41 +186,37 @@ SELECT 99991231 AS date_id
      , 99991231 AS week_start_date_id
      , '9999-12-31' AS week_end_date
      , 99991231 AS week_end_date_id
-     , NULL AS weekday_flag
-     , NULL AS weekend_flag
-     , NULL AS last_day_in_week_flag
-     , NULL AS month_number
-     , NULL AS month_name
-     , NULL AS month_abbreviation
-     , NULL AS month_last_day_number
-     , NULL AS month_start_date
-     , NULL AS month_start_date_id
-     , NULL AS month_end_date
-     , NULL AS month_end_date_id
-     , NULL AS month_end_date_previous
-     , NULL AS month_end_date_previous_id
-     , NULL AS last_day_in_month_flag
-     , NULL AS quarter_number
-     , NULL AS quarter_name
-     , NULL AS quarter_code
-     , NULL AS quarter_start_date
-     , NULL AS quarter_start_date_id
-     , NULL AS quarter_end_date
-     , NULL AS quarter_end_date_id
-     , NULL AS last_day_in_quarter_flag
-     , NULL AS year_number
-     , NULL AS year_start_date
-     , NULL AS year_start_date_id
-     , NULL AS year_end_date
-     , NULL AS year_end_date_id
-     , NULL AS yyyymm
-     , NULL AS last_day_in_year_flag
+     , 0 AS weekday_flag
+     , 0 AS weekend_flag
+     , 0 AS last_day_in_week_flag
+     , 0 AS month_number
+     , 'NA' AS month_name
+     , 'NA' AS month_abbreviation
+     , 0 AS month_last_day_number
+     , '9999-12-31' AS month_start_date
+     , 99991231 AS month_start_date_id
+     , '9999-12-31' AS month_end_date
+     , 99991231 AS month_end_date_id
+     , '9999-12-31' AS month_end_date_previous
+     , 99991231 AS month_end_date_previous_id
+     , 0 AS last_day_in_month_flag
+     , 0 AS quarter_number
+     , 'NA' AS quarter_name
+     , 'NA' AS quarter_code
+     , '9999-12-31' AS quarter_start_date
+     , 99991231 AS quarter_start_date_id
+     , '9999-12-31' AS quarter_end_date
+     , 99991231 AS quarter_end_date_id
+     , 0 AS last_day_in_quarter_flag
+     , 9999 AS year_number
+     , '9999-12-31' AS year_start_date
+     , 99991231 AS year_start_date_id
+     , '9999-12-31' AS year_end_date
+     , 99991231 AS year_end_date_id
+     , 999912 AS yyyymm
+     , 0 AS last_day_in_year_flag
      , NULL AS holiday_ind -- Challenge field
      , NULL AS holiday_name -- Challenge field
 	 ;
-
   END;
-
-GO
-
 
