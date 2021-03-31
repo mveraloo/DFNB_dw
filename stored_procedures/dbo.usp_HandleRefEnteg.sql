@@ -269,7 +269,7 @@ IF EXISTS
 )
     BEGIN
 
-        ALTER TABLE dbo.tblCustomerDim DROP CONSTRAINT FK_tblOrgHier_area_id_tblAreaDim_area_id;
+        ALTER TABLE dbo.tblOrgHier DROP CONSTRAINT FK_tblOrgHier_area_id_tblAreaDim_area_id;
 
 END;
 
